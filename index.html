@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset=utf-8>
+  <script
+    src="https://browser.sentry-cdn.com/5.27.6/bundle.min.js"
+    integrity="sha384-rtZLZkLLKTQnK3HpcN1IG6wMYrx+O3GraPVH74SyT/gzvTfX6O/XLR7Ww65yd1w+"
+    crossorigin="anonymous"
+  ></script>
+  <script src="wasm-support.js"></script>
+  <script>
+    Sentry.init({
+      dsn: "http://685de48a14154408b6346e40820334af@localhost:3001/1",
+      release: "foo@1.0.0",
+      debug: true,
+      beforeSend: function(event) {
+        console.log(event);
+        return event;
+      }
+    });
+
+    function crash() {
+      throw new Error("whoops");
+    }
+    
+    async function load(path, imports, exportName) {
+      const importObj = { env: imports };
+      const mod = await WebAssembly.instantiateStreaming(fetch(path), importObj);
+      return mod.instance.exports[exportName];
+    }
+    
+    (async () => {
+      const call = await load("target/wasm32-unknown-unknown/debug/simple.wasm", { external_func: crash }, "internal_func");
+    
+      console.log("About to call a WASM function");
+      try {
+        call();
+      } catch (e) {
+        Sentry.captureException(e);
+      }
+    })();
+  </script>
+</head>
+<body>
+</body>
+</html>
